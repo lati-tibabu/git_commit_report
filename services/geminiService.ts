@@ -1,10 +1,16 @@
 import { GoogleGenAI } from "@google/genai";
 import { ProjectData } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 // Using Flash for speed and large context window which is great for logs
 const MODEL_NAME = 'gemini-3-flash-preview';
+
+const getAiClient = (): GoogleGenAI => {
+  const apiKey = sessionStorage.getItem('gemini_api_key');
+  if (!apiKey) {
+    throw new Error("API Key is missing. Please set your Gemini API Key.");
+  }
+  return new GoogleGenAI({ apiKey });
+};
 
 export const generateTaskReport = async (projects: ProjectData[]): Promise<string> => {
   if (projects.length === 0) return '';
@@ -40,6 +46,7 @@ export const generateTaskReport = async (projects: ProjectData[]): Promise<strin
   `;
 
   try {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
       contents: promptInput,
@@ -50,8 +57,11 @@ export const generateTaskReport = async (projects: ProjectData[]): Promise<strin
     });
 
     return response.text || "No report generated.";
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini API Error:", error);
+    if (error.message?.includes('API Key')) {
+      throw error;
+    }
     throw new Error("Failed to generate report. Please check your API key and connection.");
   }
 };
@@ -69,6 +79,7 @@ export const translateReportToOromo = async (markdown: string): Promise<string> 
   `;
 
   try {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
       contents: markdown,

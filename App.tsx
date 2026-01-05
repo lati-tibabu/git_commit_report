@@ -2,15 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { ProjectData, ReportState, ReportLanguage } from './types';
 import { ProjectList } from './components/ProjectList';
 import { ReportView } from './components/ReportView';
+import { ApiKeyModal } from './components/ApiKeyModal';
 import { generateTaskReport, translateReportToOromo } from './services/geminiService';
-import { Bot, Sparkles, AlertCircle } from 'lucide-react';
+import { Bot, Sparkles, AlertCircle, KeyRound } from 'lucide-react';
 
 const LOCAL_STORAGE_KEY = 'git_report_projects';
 const REPORT_STORAGE_KEY = 'git_report_data';
+const SESSION_KEY_NAME = 'gemini_api_key';
 
 const App: React.FC = () => {
   // State for input data
   const [projects, setProjects] = useState<ProjectData[]>([]);
+  
+  // State for API Key
+  const [hasApiKey, setHasApiKey] = useState(false);
   
   // State for report generation
   const [reportState, setReportState] = useState<ReportState>({
@@ -24,10 +29,11 @@ const App: React.FC = () => {
 
   const [currentLanguage, setCurrentLanguage] = useState<ReportLanguage>(ReportLanguage.ENGLISH);
 
-  // Initialize from LocalStorage
+  // Initialize from LocalStorage and SessionStorage
   useEffect(() => {
     const savedProjects = localStorage.getItem(LOCAL_STORAGE_KEY);
     const savedReport = localStorage.getItem(REPORT_STORAGE_KEY);
+    const savedKey = sessionStorage.getItem(SESSION_KEY_NAME);
 
     if (savedProjects) {
       try {
@@ -44,6 +50,8 @@ const App: React.FC = () => {
         console.error("Failed to load report", e);
       }
     }
+
+    setHasApiKey(!!savedKey);
   }, []);
 
   // Save to LocalStorage on change
@@ -54,6 +62,16 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem(REPORT_STORAGE_KEY, JSON.stringify(reportState));
   }, [reportState]);
+
+  const handleSaveKey = (key: string) => {
+    sessionStorage.setItem(SESSION_KEY_NAME, key);
+    setHasApiKey(true);
+  };
+
+  const handleClearKey = () => {
+    sessionStorage.removeItem(SESSION_KEY_NAME);
+    setHasApiKey(false);
+  };
 
   const handleGenerateReport = async () => {
     if (projects.length === 0) return;
@@ -112,9 +130,12 @@ const App: React.FC = () => {
     : (reportState.translatedMarkdown || reportState.markdown);
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
+    <div className="min-h-screen bg-slate-50 pb-20 relative">
+      {/* API Key Modal Overlay */}
+      {!hasApiKey && <ApiKeyModal onSave={handleSaveKey} />}
+
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="bg-primary/10 p-2 rounded-lg">
@@ -126,12 +147,21 @@ const App: React.FC = () => {
             </div>
           </div>
           <div>
-            {/* Could add user profile or API key indicator here if needed */}
+            {hasApiKey && (
+              <button
+                onClick={handleClearKey}
+                className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 hover:bg-slate-50 px-3 py-1.5 rounded-lg transition-colors"
+                title="Change API Key"
+              >
+                <KeyRound className="w-4 h-4" />
+                <span className="hidden sm:inline">Change Key</span>
+              </button>
+            )}
           </div>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-8 space-y-12">
+      <main className={`max-w-5xl mx-auto px-6 py-8 space-y-12 transition-opacity duration-300 ${!hasApiKey ? 'opacity-20 pointer-events-none blur-sm' : 'opacity-100'}`}>
         
         {/* Input Section */}
         <section className="space-y-6">
