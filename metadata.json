@@ -1,0 +1,5 @@
+{
+  "name": "GitReport AI",
+  "description": "An AI-powered tool that turns raw Git commit history into structured, readable task reports with Afaan Oromoo translation support.",
+  "requestFramePermissions": []
+}
